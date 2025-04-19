@@ -24,7 +24,7 @@ contract BinarySearch {
             } else if (target > array[middle]) {
                 left = middle + 1;
             } else if (target < array[middle]) {
-                right = middle;
+                right = middle - 1;
             }
         }
         return -1;
