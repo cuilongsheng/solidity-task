@@ -2,14 +2,16 @@
 pragma solidity ^0.8;
 
 // import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-
+// 0x5B38Da6a701c568545dCfcB03FcB875f56beddC4 
 contract MyERC20Token {
     // 合约owner可以增发token;
     address public owner;
     uint256 public total = 0; // 此处public为了方便查看 100000000000000000000
     mapping (address => uint256) private balances; // 记录所有token的账户
-    // token持有者可以把自己的token授权给某个人使用 0xAb8483F64d9C6d1EcF9b849Ae677dD3315835cb2 0x4B20993Bc481177ec7E8f571ceCaE8A9e22C02db
-    mapping(address account => mapping(address user => uint256)) private allowUsers; 
+    // token持有者可以把自己的token授权给某个人使用 
+    // 0xAb8483F64d9C6d1EcF9b849Ae677dD3315835cb2
+    // 0x4B20993Bc481177ec7E8f571ceCaE8A9e22C02db
+    mapping(address account => mapping(address spender => uint256)) public _allowances;
 
     string public tokenName;
     string public tokenSymbol;
@@ -17,7 +19,8 @@ contract MyERC20Token {
     event Transfer(address from, address to, uint amount); // 每笔交易给谁了
     event Approve(address from, address user, uint amount); // 授权记录
 
-    error ERC20InvalidReceiver(address receiver); // 抄的
+    error ERC20InvalidSender(address sender); // 抄的
+    error ERC20InvalidReceiver(address receiver);
 
     constructor(string memory name, string memory symbol) {
         tokenName = name;
@@ -61,44 +64,59 @@ contract MyERC20Token {
     // 转账者msg.sender, 把多少钱value, 转给谁to
     function transfer(address to, uint amount) public returns(bool) {
         address from = msg.sender;
-        // 不能为0地址
-        if(from == address(0)) {
-            revert ERC20InvalidReceiver(address(0));
-        }
-        if(to == address(0)) {
-            revert ERC20InvalidReceiver(address(0));
-        }
-        if(owner != from) {
-            // 账户金额不能小于amount
-            require(balances[from]> 0 && amount>0 && amount < balances[from], "Check if the account balance has a token and cannot be less than the transfer amount");
-            updateBalances(from, to, amount);
-        } else {
-            require(total > 0, "Please issue additional tokens");
-            updateTotal(to, amount);
-        }
+        _transfer(from, to, amount);
 
         return true;
     }
+    function _transfer(address from, address to, uint256 value) internal {
+        if (from == address(0)) {
+            revert ERC20InvalidSender(address(0));
+        }
+        if (to == address(0)) {
+            revert ERC20InvalidReceiver(address(0));
+        }
+        _update(from, to, value);
+
+    }
 
     // 更新某个账户的金额
-    function updateBalances(address from, address to, uint256 value) private {
-        balances[from] -= value;
-        balances[to] += value;
+    function _update(address from, address to, uint256 value) private {
+        // 1, 如果from是owner
+        // 2, 如果to是owner
+        if(from == owner) {
+            total -= value;
+        } else {
+            require(balances[from]> 0 && value>0 && value < balances[from], "Check if the account balance has a token and cannot be less than the transfer amount");
+            balances[from] -= value;
+        }
+
+        if(to == owner) {
+            total += value;
+        } else {
+            balances[to] += value;
+        }
 
         emit Transfer(from,to,value);
     }
 
+
     // 授权
-    function approve(address user, uint256 value) public { 
-        address from = msg.sender;
-        allowUsers[from][user] = value;
-        emit Approve(from, user, value);
+    function approve(address spender, uint256 value) public returns (bool) {
+        address _owner = msg.sender;
+        _approve(_owner, spender, value);
+        return true;
     }
+
+    function _approve(address _owner, address spender, uint256 value) private  {
+        _allowances[_owner][spender] = value;
+    }
+
+
 
     /* 
     * 代扣转账 
     * _owner token 拥有者
-    * msg.sender(_user) 当前转账者(被授权人)
+    * msg.sender(spender) 当前转账者(被授权人)
     * to 转给谁
     * value 转账金额
     */
@@ -107,17 +125,16 @@ contract MyERC20Token {
         require(value>0);
         // _owner 账户所有者
         // 当前操作人
-        address _user = msg.sender;
-        if(_owner == address(0)) {
-            revert ERC20InvalidReceiver(address(0));
-        }
-        if(to == address(0)) {
-            revert ERC20InvalidReceiver(address(0));
-        }
-        require(_owner != _user && allowUsers[_owner][_user] > 0); // 授权不能为零
-        // 可以操作的金额
+        address spender = msg.sender;
+        
+        require(_allowances[_owner][spender] > value); // 授权不能为零
+
+        // 更新_owner的余额
+        _allowances[_owner][spender] -= value;
+        _approve(_owner, spender, _allowances[_owner][spender] - value);
+        // 更新可以操作的余额
         if(value <= balances[_owner]) {
-            updateBalances(_owner, to, value);
+            _update(_owner, to, value);
             return true;
         }
         return false;
