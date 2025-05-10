@@ -1,0 +1,16 @@
+{
+  "name": "task-nft-auction",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@openzeppelin/contracts-upgradeable": "^5.3.0",
+    "@openzeppelin/hardhat-upgrades": "^3.9.0",
+    "hardhat": "^2.24.0",
+    "hardhat-deploy": "^1.0.2"
+  },
+  "dependencies": {
+    "@chainlink/contracts": "^1.3.0",
+    "@nomiclabs/hardhat-ethers": "^2.2.3",
+    "@nomiclabs/hardhat-waffle": "^2.0.6",
+    "@openzeppelin/contracts": "^5.3.0"
+  }
+}
