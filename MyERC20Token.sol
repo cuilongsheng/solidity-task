@@ -46,11 +46,13 @@ contract MyERC20Token {
     // 更新合约中总金额
     function initTotal(uint256 value) private {
         total = value;
+        balances[owner] = value;
     }
 
     // owner可以控制合约token
     function updateTotal(address to, uint256 amount) private onlyOwner {
         total -= amount;
+        balances[owner] -= amount;
         balances[to] += amount;
     }
 
@@ -85,6 +87,7 @@ contract MyERC20Token {
         // 2, 如果to是owner
         if(from == owner) {
             total -= value;
+            balances[owner] -= value;
         } else {
             require(balances[from]> 0 && value>0 && value < balances[from], "Check if the account balance has a token and cannot be less than the transfer amount");
             balances[from] -= value;
@@ -92,6 +95,7 @@ contract MyERC20Token {
 
         if(to == owner) {
             total += value;
+            balances[owner] += value;
         } else {
             balances[to] += value;
         }
